@@ -4,14 +4,26 @@
     <meta charset="UTF-8">
     <title>MPU6050</title>
     <script type="text/javascript" src="https://canvasjs.com/assets/script/canvasjs.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <style>
+        #map {
+            height: 400px;
+            width: 100%;
+        }
+    </style>
 </head>
 <body>
     <h1>1. Datos del MPU6050</h1>
     <h2>X</h2> <input type="text" size="6" id="x"><br>
     <h2>Y</h2> <input type="text" size="6" id="y"><br>
     <h2>Z</h2> <input type="text" size="6" id="z"><br>
+    <h2>Latitud</h2> <input type="text" size="10" id="lat"><br>
+    <h2>Longitud</h2> <input type="text" size="10" id="lng"><br>
     <h1>2. Gráfica</h1><br>
     <div id="ChartContainer" style="height: 300px; width:80%;"></div>
+    <h1>3. Mapa</h1>
+    <div id="map"></div>
     <script type="text/javascript">
         function httpGetAsync(theUrl, callback) {
             var xmlHttp = new XMLHttpRequest();
@@ -69,34 +81,50 @@
             var yZVal = 0;
             var updateInterval = 2000;
             var time = new Date();
+            var map = L.map('map').setView([0, 0], 13); // Inicializa el mapa con coordenadas por defecto
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+
+            var marker = L.marker([0, 0]).addTo(map); // Inicializa el marcador con coordenadas por defecto
 
             var updateChart = function() {
-                httpGetAsync('http://192.168.1.8:8000/get', function(data) {
-                    document.getElementById("x").value = data[0].x;
-                    document.getElementById("y").value = data[0].y;
-                    document.getElementById("z").value = data[0].z;
+                httpGetAsync('http://localhost:8000/get', function(data) {
+                    if (data.length > 0) {
+                        var latestData = data[data.length - 1]; // Obtiene el último dato
+                        document.getElementById("x").value = latestData.x;
+                        document.getElementById("y").value = latestData.y;
+                        document.getElementById("z").value = latestData.z;
+                        document.getElementById("lat").value = latestData.lat;
+                        document.getElementById("lng").value = latestData.lng;
 
-                    console.log(data);
+                        console.log(data);
 
-                    time.setTime(time.getTime() + updateInterval);
-                    yXVal = parseInt(data[0].x);
-                    yYVal = parseInt(data[0].y);
-                    yZVal = parseInt(data[0].z);
+                        time.setTime(time.getTime() + updateInterval);
+                        yXVal = parseInt(latestData.x);
+                        yYVal = parseInt(latestData.y);
+                        yZVal = parseInt(latestData.z);
 
-                    dataX.push({
-                        x: time.getTime(),
-                        y: yXVal
-                    });
-                    dataY.push({
-                        x: time.getTime(),
-                        y: yYVal
-                    });
-                    dataZ.push({
-                        x: time.getTime(),
-                        y: yZVal
-                    });
+                        dataX.push({
+                            x: time.getTime(),
+                            y: yXVal
+                        });
+                        dataY.push({
+                            x: time.getTime(),
+                            y: yYVal
+                        });
+                        dataZ.push({
+                            x: time.getTime(),
+                            y: yZVal
+                        });
 
-                    Chart.render();
+                        Chart.render();
+
+                        // Actualiza el marcador en el mapa
+                        marker.setLatLng([latestData.lat, latestData.lng]);
+                        map.setView([latestData.lat, latestData.lng], 13);
+                    }
                 });
             };
 
