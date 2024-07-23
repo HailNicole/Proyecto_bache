@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>MPU6050</title>
+    <script type="text/javascript" src="https://canvasjs.com/assets/script/canvasjs.min.js"></script>
+</head>
+<body>
+    <h1>1. Datos del MPU6050</h1>
+    <h2>X</h2> <input type="text" size="6" id="x"><br>
+    <h2>Y</h2> <input type="text" size="6" id="y"><br>
+    <h2>Z</h2> <input type="text" size="6" id="z"><br>
+    <h1>2. Gráfica</h1><br>
+    <div id="ChartContainer" style="height: 300px; width:80%;"></div>
+    <script type="text/javascript">
+        function httpGetAsync(theUrl, callback) {
+            var xmlHttp = new XMLHttpRequest();
+            xmlHttp.onreadystatechange = function() {
+                if (xmlHttp.readyState == 4 && xmlHttp.status == 200)
+                    callback(JSON.parse(xmlHttp.responseText));
+            }
+            xmlHttp.open("GET", theUrl, true);
+            xmlHttp.send(null);
+        }
+
+        window.onload = function() {
+            var dataX = [];
+            var dataY = [];
+            var dataZ = [];
+
+            var Chart = new CanvasJS.Chart("ChartContainer", {
+                zoomEnabled: true,
+                title: {
+                    text: "Valores de X, Y, Z"
+                },
+                toolTip: {
+                    shared: true
+                },
+                axisX: {
+                    title: "Actualización cada 2 segundos"
+                },
+                data: [
+                    {
+                        type: "line",
+                        xValueType: "dateTime",
+                        showInLegend: true,
+                        name: "x",
+                        dataPoints: dataX
+                    },
+                    {
+                        type: "line",
+                        xValueType: "dateTime",
+                        showInLegend: true,
+                        name: "y",
+                        dataPoints: dataY
+                    },
+                    {
+                        type: "line",
+                        xValueType: "dateTime",
+                        showInLegend: true,
+                        name: "z",
+                        dataPoints: dataZ
+                    }
+                ],
+            });
+
+            var yXVal = 0;
+            var yYVal = 0;
+            var yZVal = 0;
+            var updateInterval = 2000;
+            var time = new Date();
+
+            var updateChart = function() {
+                httpGetAsync('http://192.168.1.8:8000/get', function(data) {
+                    document.getElementById("x").value = data[0].x;
+                    document.getElementById("y").value = data[0].y;
+                    document.getElementById("z").value = data[0].z;
+
+                    console.log(data);
+
+                    time.setTime(time.getTime() + updateInterval);
+                    yXVal = parseInt(data[0].x);
+                    yYVal = parseInt(data[0].y);
+                    yZVal = parseInt(data[0].z);
+
+                    dataX.push({
+                        x: time.getTime(),
+                        y: yXVal
+                    });
+                    dataY.push({
+                        x: time.getTime(),
+                        y: yYVal
+                    });
+                    dataZ.push({
+                        x: time.getTime(),
+                        y: yZVal
+                    });
+
+                    Chart.render();
+                });
+            };
+
+            updateChart();
+            setInterval(function() {
+                updateChart();
+            }, updateInterval);
+        }
+    </script>
+</body>
+</html>
