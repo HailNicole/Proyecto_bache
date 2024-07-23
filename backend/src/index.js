@@ -66,7 +66,7 @@ app.get('/get', (req, res) => {
 
 app.get('/', (req, res) => {
     //res.sendFile(__dirname + '/index.html');
-    res.sendFile("Hola desde el servidor");
+    res.send("Hola desde el servidor");
 });
 
 const port = 8000;
