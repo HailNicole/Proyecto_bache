@@ -33,17 +33,17 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// Configura la ruta para servir archivos estáticos desde frontend/src
+
 app.use(express.static(path.join(__dirname, '../../frontend/src')));
 
-// Ruta para actualizar los datos
+
 app.get('/update', (req, res) => {
     const newData = new Speed({
         x: parseFloat(req.query.x),
         y: parseFloat(req.query.y),
         z: parseFloat(req.query.z),
-        lat: parseFloat(req.query.lat),  // Leer latitud
-        lng: parseFloat(req.query.lng),  // Leer longitud
+        lat: parseFloat(req.query.lat),  
+        lng: parseFloat(req.query.lng),  
         time: new Date(),
     });
 
