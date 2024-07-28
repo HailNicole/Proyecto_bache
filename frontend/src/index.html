@@ -39,6 +39,7 @@
             var dataX = [];
             var dataY = [];
             var dataZ = [];
+            var markers = []; // Array to store markers
 
             var Chart = new CanvasJS.Chart("ChartContainer", {
                 zoomEnabled: true,
@@ -76,9 +77,6 @@
                 ],
             });
 
-            var yXVal = 0;
-            var yYVal = 0;
-            var yZVal = 0;
             var updateInterval = 2000;
             var time = new Date();
             var map = L.map('map').setView([0, 0], 13); // Inicializa el mapa con coordenadas por defecto
@@ -87,11 +85,13 @@
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             }).addTo(map);
 
-            var marker = L.marker([0, 0]).addTo(map); // Inicializa el marcador con coordenadas por defecto
-
             var updateChart = function() {
                 httpGetAsync('http://localhost:8000/get', function(data) {
                     if (data.length > 0) {
+                        // Clear existing markers
+                        markers.forEach(marker => marker.remove());
+                        markers = [];
+
                         var latestData = data[data.length - 1]; // Obtiene el último dato
                         document.getElementById("x").value = latestData.x;
                         document.getElementById("y").value = latestData.y;
@@ -102,9 +102,9 @@
                         console.log(data);
 
                         time.setTime(time.getTime() + updateInterval);
-                        yXVal = parseInt(latestData.x);
-                        yYVal = parseInt(latestData.y);
-                        yZVal = parseInt(latestData.z);
+                        var yXVal = parseInt(latestData.x);
+                        var yYVal = parseInt(latestData.y);
+                        var yZVal = parseInt(latestData.z);
 
                         dataX.push({
                             x: time.getTime(),
@@ -121,9 +121,15 @@
 
                         Chart.render();
 
-                        // Actualiza el marcador en el mapa
-                        marker.setLatLng([latestData.lat, latestData.lng]);
-                        map.setView([latestData.lat, latestData.lng], 13);
+                        // Add new markers to the map
+                        data.forEach(point => {
+                            var marker = L.marker([point.lat, point.lng]).addTo(map);
+                            markers.push(marker);
+                        });
+
+                        // Optionally, adjust the view to the bounds of all markers
+                        var bounds = L.latLngBounds(data.map(point => [point.lat, point.lng]));
+                        map.fitBounds(bounds);
                     }
                 });
             };
