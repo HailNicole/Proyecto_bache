@@ -1,144 +1,157 @@
 <!DOCTYPE html>
 <html>
-<head>
-    <meta charset="UTF-8">
+  <head>
+    <meta charset="UTF-8" />
     <title>MPU6050</title>
-    <script type="text/javascript" src="https://canvasjs.com/assets/script/canvasjs.min.js"></script>
+    <script
+      type="text/javascript"
+      src="https://canvasjs.com/assets/script/canvasjs.min.js"
+    ></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <style>
-        #map {
-            height: 400px;
-            width: 100%;
-        }
+      #map {
+        height: 400px;
+        width: 100%;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <h1>1. Datos del MPU6050</h1>
-    <h2>X</h2> <input type="text" size="6" id="x"><br>
-    <h2>Y</h2> <input type="text" size="6" id="y"><br>
-    <h2>Z</h2> <input type="text" size="6" id="z"><br>
-    <h2>Latitud</h2> <input type="text" size="10" id="lat"><br>
-    <h2>Longitud</h2> <input type="text" size="10" id="lng"><br>
-    <h1>2. Gráfica</h1><br>
-    <div id="ChartContainer" style="height: 300px; width:80%;"></div>
+    <h2>X</h2>
+    <input type="text" size="6" id="x" /><br />
+    <h2>Y</h2>
+    <input type="text" size="6" id="y" /><br />
+    <h2>Z</h2>
+    <input type="text" size="6" id="z" /><br />
+    <h2>Latitud</h2>
+    <input type="text" size="10" id="lat" /><br />
+    <h2>Longitud</h2>
+    <input type="text" size="10" id="lng" /><br />
+    <h1>2. Gráfica</h1>
+    <br />
+    <div id="ChartContainer" style="height: 300px; width: 80%"></div>
     <h1>3. Mapa</h1>
     <div id="map"></div>
     <script type="text/javascript">
-        function httpGetAsync(theUrl, callback) {
-            var xmlHttp = new XMLHttpRequest();
-            xmlHttp.onreadystatechange = function() {
-                if (xmlHttp.readyState == 4 && xmlHttp.status == 200)
-                    callback(JSON.parse(xmlHttp.responseText));
+      function httpGetAsync(theUrl, callback) {
+        var xmlHttp = new XMLHttpRequest();
+        xmlHttp.onreadystatechange = function () {
+          if (xmlHttp.readyState == 4 && xmlHttp.status == 200)
+            callback(JSON.parse(xmlHttp.responseText));
+        };
+        xmlHttp.open("GET", theUrl, true);
+        xmlHttp.send(null);
+      }
+
+      window.onload = function () {
+        var dataX = [];
+        var dataY = [];
+        var dataZ = [];
+        var markers = []; // Array to store markers
+
+        var Chart = new CanvasJS.Chart("ChartContainer", {
+          zoomEnabled: true,
+          title: {
+            text: "Valores de X, Y, Z",
+          },
+          toolTip: {
+            shared: true,
+          },
+          axisX: {
+            title: "Actualización cada 2 segundos",
+          },
+          data: [
+            {
+              type: "line",
+              xValueType: "dateTime",
+              showInLegend: true,
+              name: "x",
+              dataPoints: dataX,
+            },
+            {
+              type: "line",
+              xValueType: "dateTime",
+              showInLegend: true,
+              name: "y",
+              dataPoints: dataY,
+            },
+            {
+              type: "line",
+              xValueType: "dateTime",
+              showInLegend: true,
+              name: "z",
+              dataPoints: dataZ,
+            },
+          ],
+        });
+
+        var updateInterval = 2000;
+        var time = new Date();
+        var map = L.map("map").setView([0,0], 20); // Inicializa el mapa con coordenadas por defecto
+
+        L.tileLayer("https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png", {
+          maxZoom: 20,
+          attribution:
+            '&copy; OpenStreetMap France | &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        }).addTo(map);
+
+        var updateChart = function () {
+          httpGetAsync("http://localhost:8000/get", function (data) {
+            if (data.length > 0) {
+              // Clear existing markers
+              markers.forEach((marker) => marker.remove());
+              markers = [];
+
+              var latestData = data[data.length - 1]; // Obtiene el último dato
+              document.getElementById("x").value = latestData.x;
+              document.getElementById("y").value = latestData.y;
+              document.getElementById("z").value = latestData.z;
+              document.getElementById("lat").value = latestData.lat;
+              document.getElementById("lng").value = latestData.lng;
+
+              console.log(data);
+
+              time.setTime(time.getTime() + updateInterval);
+              var yXVal = parseInt(latestData.x);
+              var yYVal = parseInt(latestData.y);
+              var yZVal = parseInt(latestData.z);
+
+              dataX.push({
+                x: time.getTime(),
+                y: yXVal,
+              });
+              dataY.push({
+                x: time.getTime(),
+                y: yYVal,
+              });
+              dataZ.push({
+                x: time.getTime(),
+                y: yZVal,
+              });
+
+              Chart.render();
+
+              // Add new markers to the map
+              data.forEach((point) => {
+                var marker = L.marker([point.lat, point.lng]).addTo(map);
+                markers.push(marker);
+              });
+
+              // Optionally, adjust the view to the bounds of all markers
+              var bounds = L.latLngBounds(
+                data.map((point) => [point.lat, point.lng])
+              );
+              map.fitBounds(bounds);
             }
-            xmlHttp.open("GET", theUrl, true);
-            xmlHttp.send(null);
-        }
+          });
+        };
 
-        window.onload = function() {
-            var dataX = [];
-            var dataY = [];
-            var dataZ = [];
-            var markers = []; // Array to store markers
-
-            var Chart = new CanvasJS.Chart("ChartContainer", {
-                zoomEnabled: true,
-                title: {
-                    text: "Valores de X, Y, Z"
-                },
-                toolTip: {
-                    shared: true
-                },
-                axisX: {
-                    title: "Actualización cada 2 segundos"
-                },
-                data: [
-                    {
-                        type: "line",
-                        xValueType: "dateTime",
-                        showInLegend: true,
-                        name: "x",
-                        dataPoints: dataX
-                    },
-                    {
-                        type: "line",
-                        xValueType: "dateTime",
-                        showInLegend: true,
-                        name: "y",
-                        dataPoints: dataY
-                    },
-                    {
-                        type: "line",
-                        xValueType: "dateTime",
-                        showInLegend: true,
-                        name: "z",
-                        dataPoints: dataZ
-                    }
-                ],
-            });
-
-            var updateInterval = 2000;
-            var time = new Date();
-            var map = L.map('map').setView([0, 0], 13); // Inicializa el mapa con coordenadas por defecto
-
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            }).addTo(map);
-
-            var updateChart = function() {
-                httpGetAsync('http://localhost:8000/get', function(data) {
-                    if (data.length > 0) {
-                        // Clear existing markers
-                        markers.forEach(marker => marker.remove());
-                        markers = [];
-
-                        var latestData = data[data.length - 1]; // Obtiene el último dato
-                        document.getElementById("x").value = latestData.x;
-                        document.getElementById("y").value = latestData.y;
-                        document.getElementById("z").value = latestData.z;
-                        document.getElementById("lat").value = latestData.lat;
-                        document.getElementById("lng").value = latestData.lng;
-
-                        console.log(data);
-
-                        time.setTime(time.getTime() + updateInterval);
-                        var yXVal = parseInt(latestData.x);
-                        var yYVal = parseInt(latestData.y);
-                        var yZVal = parseInt(latestData.z);
-
-                        dataX.push({
-                            x: time.getTime(),
-                            y: yXVal
-                        });
-                        dataY.push({
-                            x: time.getTime(),
-                            y: yYVal
-                        });
-                        dataZ.push({
-                            x: time.getTime(),
-                            y: yZVal
-                        });
-
-                        Chart.render();
-
-                        // Add new markers to the map
-                        data.forEach(point => {
-                            var marker = L.marker([point.lat, point.lng]).addTo(map);
-                            markers.push(marker);
-                        });
-
-                        // Optionally, adjust the view to the bounds of all markers
-                        var bounds = L.latLngBounds(data.map(point => [point.lat, point.lng]));
-                        map.fitBounds(bounds);
-                    }
-                });
-            };
-
-            updateChart();
-            setInterval(function() {
-                updateChart();
-            }, updateInterval);
-        }
+        updateChart();
+        setInterval(function () {
+          updateChart();
+        }, updateInterval);
+      };
     </script>
-</body>
+  </body>
 </html>
