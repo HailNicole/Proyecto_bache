@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>MPU6050</title>
+    <script type="text/javascript" src="https://canvasjs.com/assets/script/canvasjs.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <style>
+      #map {
+        height: 1000px;
+        width: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Mapa</h1>
+    <div id="map"></div>
+    <script type="text/javascript">
+      function httpGetAsync(theUrl, callback) {
+        var xmlHttp = new XMLHttpRequest();
+        xmlHttp.onreadystatechange = function () {
+          if (xmlHttp.readyState == 4 && xmlHttp.status == 200)
+            callback(JSON.parse(xmlHttp.responseText));
+        };
+        xmlHttp.open("GET", theUrl, true);
+        xmlHttp.send(null);
+      }
+
+      window.onload = function () {
+        var dataX = [];
+        var dataY = [];
+        var dataZ = [];
+        var markers = []; // Array to store markers
+        var lastData = null; // Store the last data received
+        var lastDataLength = 0; // Store the last length of data arrays
+
+        var map = L.map("map").setView([0, 0], 20); // Inicializa el mapa con coordenadas por defecto
+
+        L.tileLayer("https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png", {
+          maxZoom: 20,
+          attribution:
+            '&copy; OpenStreetMap France | &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        }).addTo(map);
+
+        var updateChart = function () {
+          httpGetAsync("http://localhost:8000/get", function (data) {
+            if (data) {
+              var dataArray = Object.values(data); // Convertir el objeto a una lista de valores
+
+              if (dataArray.length > 0) {
+                var latestData = dataArray[dataArray.length - 1]; // Obtiene el último dato
+
+                // Solo actualiza si hay un nuevo dato o el tamaño del array ha cambiado
+                if (!lastData || JSON.stringify(latestData) !== JSON.stringify(lastData) || dataArray.length > lastDataLength) {
+
+                  // Add new markers to the map without removing existing ones
+                  var bounds = L.latLngBounds(
+                    dataArray
+                      .filter(point => point.lat !== undefined && point.lng !== undefined)
+                      .map(point => [point.lat, point.lng])
+                  );
+
+                  dataArray
+                    .filter(point => point.lat !== undefined && point.lng !== undefined)
+                    .forEach((point) => {
+                      // Check if marker already exists
+                      var exists = markers.some(marker => marker.getLatLng().equals([point.lat, point.lng]));
+                      if (!exists) {
+                        var marker = L.marker([point.lat, point.lng]).addTo(map);
+                        markers.push(marker);
+                      }
+                    });
+                  map.fitBounds(bounds);
+                  Chart.render();
+                  lastData = latestData; // Update lastData with the current data
+                  lastDataLength = dataArray.length; // Update the last length of data arrays
+                }
+              }
+            }
+          });
+        };
+
+        updateChart();
+        setInterval(function () {
+          updateChart();
+        }, updateInterval);
+      };
+    </script>
+  </body>
+</html>
