@@ -46,6 +46,8 @@
         var dataY = [];
         var dataZ = [];
         var markers = []; // Array to store markers
+        var lastData = null; // Store the last data received
+        var lastDataLength = 0; // Store the last length of data arrays
 
         var Chart = new CanvasJS.Chart("ChartContainer", {
           zoomEnabled: true,
@@ -54,9 +56,6 @@
           },
           toolTip: {
             shared: true,
-          },
-          axisX: {
-            title: "Actualización cada 2 segundos",
           },
           data: [
             {
@@ -85,7 +84,7 @@
 
         var updateInterval = 2000;
         var time = new Date();
-        var map = L.map("map").setView([0,0], 20); // Inicializa el mapa con coordenadas por defecto
+        var map = L.map("map").setView([0, 0], 20); // Inicializa el mapa con coordenadas por defecto
 
         L.tileLayer("https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png", {
           maxZoom: 20,
@@ -94,59 +93,64 @@
         }).addTo(map);
 
         var updateChart = function () {
-          httpGetAsync("http://localhost:8000/get", function (data) {
+          httpGetAsync("http://35.175.228.149:8000/get", function (data) {
             if (data) {
-              // Clear existing markers
-              markers.forEach((marker) => marker.remove());
-              markers = [];
-
               var dataArray = Object.values(data); // Convertir el objeto a una lista de valores
 
               if (dataArray.length > 0) {
                 var latestData = dataArray[dataArray.length - 1]; // Obtiene el último dato
-                document.getElementById("x").value = latestData.x;
-                document.getElementById("y").value = latestData.y;
-                document.getElementById("z").value = latestData.z;
-                document.getElementById("lat").value = latestData.lat;
-                document.getElementById("lng").value = latestData.lng;
 
-                console.log(dataArray);
+                // Solo actualiza si hay un nuevo dato o el tamaño del array ha cambiado
+                if (!lastData || JSON.stringify(latestData) !== JSON.stringify(lastData) || dataArray.length > lastDataLength) {
+                  document.getElementById("x").value = latestData.x;
+                  document.getElementById("y").value = latestData.y;
+                  document.getElementById("z").value = latestData.z;
+                  document.getElementById("lat").value = latestData.lat;
+                  document.getElementById("lng").value = latestData.lng;
 
-                time.setTime(time.getTime() + updateInterval);
-                var yXVal = parseInt(latestData.x);
-                var yYVal = parseInt(latestData.y);
-                var yZVal = parseInt(latestData.z);
+                  time.setTime(time.getTime() + updateInterval);
+                  var yXVal = parseInt(latestData.x);
+                  var yYVal = parseInt(latestData.y);
+                  var yZVal = parseInt(latestData.z);
 
-                dataX.push({
-                  x: time.getTime(),
-                  y: yXVal,
-                });
-                dataY.push({
-                  x: time.getTime(),
-                  y: yYVal,
-                });
-                dataZ.push({
-                  x: time.getTime(),
-                  y: yZVal,
-                });
-
-                Chart.render();
-
-                // Add new markers to the map
-                var bounds = L.latLngBounds(
-                  dataArray
-                    .filter(point => point.lat !== undefined && point.lng !== undefined)
-                    .map(point => [point.lat, point.lng])
-                );
-
-                dataArray
-                  .filter(point => point.lat !== undefined && point.lng !== undefined)
-                  .forEach((point) => {
-                    var marker = L.marker([point.lat, point.lng]).addTo(map);
-                    markers.push(marker);
+                  dataX.push({
+                    x: time.getTime(),
+                    y: yXVal,
+                  });
+                  dataY.push({
+                    x: time.getTime(),
+                    y: yYVal,
+                  });
+                  dataZ.push({
+                    x: time.getTime(),
+                    y: yZVal,
                   });
 
-                map.fitBounds(bounds); 
+                  Chart.render();
+
+                  // Add new markers to the map without removing existing ones
+                  var bounds = L.latLngBounds(
+                    dataArray
+                      .filter(point => point.lat !== undefined && point.lng !== undefined)
+                      .map(point => [point.lat, point.lng])
+                  );
+
+                  dataArray
+                    .filter(point => point.lat !== undefined && point.lng !== undefined)
+                    .forEach((point) => {
+                      // Check if marker already exists
+                      var exists = markers.some(marker => marker.getLatLng().equals([point.lat, point.lng]));
+                      if (!exists) {
+                        var marker = L.marker([point.lat, point.lng]).addTo(map);
+                        markers.push(marker);
+                      }
+                    });
+
+                  map.fitBounds(bounds);
+
+                  lastData = latestData; // Update lastData with the current data
+                  lastDataLength = dataArray.length; // Update the last length of data arrays
+                }
               }
             }
           });
