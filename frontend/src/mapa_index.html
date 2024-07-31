@@ -44,7 +44,7 @@
         }).addTo(map);
 
         var updateChart = function () {
-          httpGetAsync("http://localhost:8000/get", function (data) {
+          httpGetAsync("http://35.175.228.149:8000/get", function (data) {
             if (data) {
               var dataArray = Object.values(data); // Convertir el objeto a una lista de valores
 
