@@ -58,6 +58,10 @@ app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "../../frontend/src/index.html"));
 });
 
+app.get("/mapa", (req, res) => {
+  res.sendFile(path.join(__dirname, "../../frontend/src/mapa_index.html"));
+});
+
 const port = 8000;
 app.listen(port, () => {
   console.log(`Server listening on http://localhost:${port}`);
