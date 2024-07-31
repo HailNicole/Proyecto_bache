@@ -3,10 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <title>MPU6050</title>
-    <script
-      type="text/javascript"
-      src="https://canvasjs.com/assets/script/canvasjs.min.js"
-    ></script>
+    <script type="text/javascript" src="https://canvasjs.com/assets/script/canvasjs.min.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <style>
@@ -98,51 +95,59 @@
 
         var updateChart = function () {
           httpGetAsync("http://localhost:8000/get", function (data) {
-            if (data.length > 0) {
+            if (data) {
               // Clear existing markers
               markers.forEach((marker) => marker.remove());
               markers = [];
 
-              var latestData = data[data.length - 1]; // Obtiene el último dato
-              document.getElementById("x").value = latestData.x;
-              document.getElementById("y").value = latestData.y;
-              document.getElementById("z").value = latestData.z;
-              document.getElementById("lat").value = latestData.lat;
-              document.getElementById("lng").value = latestData.lng;
+              var dataArray = Object.values(data); // Convertir el objeto a una lista de valores
 
-              console.log(data);
+              if (dataArray.length > 0) {
+                var latestData = dataArray[dataArray.length - 1]; // Obtiene el último dato
+                document.getElementById("x").value = latestData.x;
+                document.getElementById("y").value = latestData.y;
+                document.getElementById("z").value = latestData.z;
+                document.getElementById("lat").value = latestData.lat;
+                document.getElementById("lng").value = latestData.lng;
 
-              time.setTime(time.getTime() + updateInterval);
-              var yXVal = parseInt(latestData.x);
-              var yYVal = parseInt(latestData.y);
-              var yZVal = parseInt(latestData.z);
+                console.log(dataArray);
 
-              dataX.push({
-                x: time.getTime(),
-                y: yXVal,
-              });
-              dataY.push({
-                x: time.getTime(),
-                y: yYVal,
-              });
-              dataZ.push({
-                x: time.getTime(),
-                y: yZVal,
-              });
+                time.setTime(time.getTime() + updateInterval);
+                var yXVal = parseInt(latestData.x);
+                var yYVal = parseInt(latestData.y);
+                var yZVal = parseInt(latestData.z);
 
-              Chart.render();
+                dataX.push({
+                  x: time.getTime(),
+                  y: yXVal,
+                });
+                dataY.push({
+                  x: time.getTime(),
+                  y: yYVal,
+                });
+                dataZ.push({
+                  x: time.getTime(),
+                  y: yZVal,
+                });
 
-              // Add new markers to the map
-              data.forEach((point) => {
-                var marker = L.marker([point.lat, point.lng]).addTo(map);
-                markers.push(marker);
-              });
+                Chart.render();
 
-              // Optionally, adjust the view to the bounds of all markers
-              var bounds = L.latLngBounds(
-                data.map((point) => [point.lat, point.lng])
-              );
-              map.fitBounds(bounds);
+                // Add new markers to the map
+                var bounds = L.latLngBounds(
+                  dataArray
+                    .filter(point => point.lat !== undefined && point.lng !== undefined)
+                    .map(point => [point.lat, point.lng])
+                );
+
+                dataArray
+                  .filter(point => point.lat !== undefined && point.lng !== undefined)
+                  .forEach((point) => {
+                    var marker = L.marker([point.lat, point.lng]).addTo(map);
+                    markers.push(marker);
+                  });
+
+                map.fitBounds(bounds); 
+              }
             }
           });
         };
